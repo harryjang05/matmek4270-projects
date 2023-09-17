@@ -10,6 +10,7 @@ We use various boundary conditions.
 import numpy as np
 import matplotlib.pyplot as plt
 import sympy as sp
+from scipy import sparse
 
 t = sp.Symbol('t')
 
@@ -142,6 +143,19 @@ class VibFD2(VibSolver):
 
     def __call__(self):
         u = np.zeros(self.Nt+1)
+        D2 = sparse.diags([np.ones(self.Nt), np.full(self.Nt+1, -2), np.ones(self.Nt)], np.array([-1, 0, 1]), (self.Nt+1, self.Nt+1), 'lil')
+        D2[0, :4] = 2, -5, 4, -1
+        D2[-1, -4:] = -1, 4, -5, 2
+        D2 *= (1/self.dt**2)
+        Id = sparse.eye(self.Nt+1)
+        A = D2 + self.w**2*Id
+        b = np.zeros(self.Nt+1)
+        b[0] = self.I
+        b[-1] = self.I
+        A[0, :4] = 1, 0, 0, 0
+        A[-1, -4:]= 0,0,0,1
+        u = sparse.linalg.spsolve(A, b)
+        
         return u
 
 class VibFD3(VibSolver):
@@ -186,4 +200,7 @@ def test_order():
     VibFD4(8, 2*np.pi/w, w).test_order(N0=20)
 
 if __name__ == '__main__':
-    test_order()
+    #test_order()
+    w=0.35
+    v = VibFD2(8, 2*np.pi/w, w)
+    v()
